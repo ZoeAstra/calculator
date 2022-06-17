@@ -1,0 +1,10 @@
+.display input {
+    width: 100%;
+    font-size: 8rem;
+    text-align: right;
+    background-color:#b5e087;
+    color: #18210c;
+    box-sizing: border-box;
+    border: none;
+    outline: none;
+}
