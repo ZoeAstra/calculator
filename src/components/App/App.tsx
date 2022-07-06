@@ -2,72 +2,75 @@ import React, { ReactElement, useState } from 'react';
 import Display from '../Display/Display';
 import './App.css';
 import Button from '../Button/Button'
+import DisplayAdapter from '../../code/DisplayAdapter';
+import { parse } from '../../code/ExpressionParser';
 
 function App(): ReactElement {
-  const [disableDisplay, setDisableDisplay] = useState(false);
-  const [display, setDisplay] = useState("");
-  const [displayPosition, setDisplayPosition] = useState(0);
-  const handleDisplayChange = (e: any) => {
-    setDisplay((e.target as HTMLInputElement).value);
-    return undefined;
-  };
-  const handleButtonClick = (name: string) => {
-    switch(name) {
-      case '1': {
-        break;
-      }
-      default: {
-        setDisplay('ERROR! Invalid button!')
-        setDisableDisplay(true);
-        break;
-      }
+  const [displayLeftSide, setDisplayLeftSide] = useState("")
+  const [displayRightSide, setDisplayRightSide] = useState("")
+  const [adapter, setAdapter] = useState(new DisplayAdapter())
+
+  const processButtonClick = (name: string) => {
+    let newAdapter = adapter
+    switch (name) {
+      case "=":
+        let tokens = adapter.getTokens()
+        let {result, error} = parse(tokens)
+        newAdapter.clear()
+        newAdapter.addToken(String(result))
+        setDisplayLeftSide(newAdapter.getLeftSide())
+        setDisplayRightSide(newAdapter.getRightSide())
+        setAdapter(newAdapter)
+        break
+      case "CLR":
+        newAdapter.clear()
+        setDisplayLeftSide(newAdapter.getLeftSide())
+        setDisplayRightSide(newAdapter.getRightSide())
+        setAdapter(newAdapter)
+        break
+        
+      default:
+        newAdapter.addToken(name)
+        setDisplayLeftSide(newAdapter.getLeftSide())
+        setDisplayRightSide(newAdapter.getRightSide())
+        setAdapter(newAdapter)
+        break
     }
     return undefined
   }
-  const addNameToDisplay = (name: string) => {
-    let beginning:string = display.slice(0,displayPosition)
-    console.log('display '+ display)
-    console.log('displayPosition '+ displayPosition)
-    let end:string = display.slice(displayPosition)
-    console.log('beginning '+ beginning)
-    console.log('end '+ end)
-    console.log('new '+ beginning+name+end)
-    setDisplay(beginning+name+end)
-    setDisplayPosition(beginning.length+name.length)
-    return undefined
-  }
+
   return (
     <div className='app'>
-      <Display value={display} disable={disableDisplay} handleChange={handleDisplayChange} />
+      <Display leftSide={displayLeftSide} rightSide={displayRightSide} />
       <div className='button-panel'>
-        <div>
-          <Button width={3} name='CE' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='(' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name=')' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='/' primary={false} handleClick={addNameToDisplay} />
+        <div className='button-row'>
+          <Button width={3} name='CLR' colorClass='black-button' handleClick={processButtonClick} />
+          <Button width={3} name='(' colorClass='black-button' handleClick={processButtonClick} />
+          <Button width={3} name=')' colorClass='black-button' handleClick={processButtonClick} />
+          <Button width={3} name='/' colorClass='grey-button' handleClick={processButtonClick} />
         </div>
-        <div>
-          <Button width={3} name='7' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='8' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='9' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='*' primary={false} handleClick={addNameToDisplay} />
+        <div className='button-row'>
+          <Button width={3} name='7' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='8' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='9' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='*' colorClass='grey-button' handleClick={processButtonClick} />
         </div>
-        <div>
-          <Button width={3} name='4' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='5' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='6' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='-' primary={false} handleClick={addNameToDisplay} />
+        <div className='button-row'>
+          <Button width={3} name='4' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='5' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='6' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='-' colorClass='grey-button' handleClick={processButtonClick} />
         </div>
-        <div>
-          <Button width={3} name='1' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='2' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='3' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='+' primary={false} handleClick={addNameToDisplay} />
+        <div className='button-row'>
+          <Button width={3} name='1' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='2' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='3' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='+' colorClass='grey-button' handleClick={processButtonClick} />
         </div>
-        <div>
-          <Button width={6} name='0' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='.' primary={false} handleClick={addNameToDisplay} />
-          <Button width={3} name='=' primary={false} handleClick={addNameToDisplay} />
+        <div className='button-row'>
+          <Button width={6} name='0' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='.' colorClass='white-button' handleClick={processButtonClick} />
+          <Button width={3} name='=' colorClass='grey-button' handleClick={processButtonClick} />
         </div>
       </div>
     </div>

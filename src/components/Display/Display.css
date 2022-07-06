@@ -1,10 +1,43 @@
-.display input {
+div.display {
     width: 100%;
-    font-size: 8rem;
-    text-align: right;
-    background-color:#b5e087;
-    color: #18210c;
+    font-size: 1.25em;
+    text-align: left;
+    background-color:#9EAB87;
+    font-family: 'VT323', monospace;
+    /* background-color:#b5e087; */
+    /* color: #18210c; */
+    color: #484D3E;
     box-sizing: border-box;
     border: none;
     outline: none;
+    align-items: center;
+    overflow: auto;
+    word-break: break-all;
+    height: 30%;
+    display: inline;
+    overflow-wrap: anywhere;
+}
+
+.cursor:before {
+    position: relative;
+    top: -.2em;
+    content : "";
+    font-size: .667em;
+    animation: cursor infinite 1s;
+    margin-left: .05em;
+}
+
+@keyframes cursor {
+    0% {
+        border-left: solid #484D3E .03em;
+    }
+    50% {
+        border-left: solid #484D3E .03em;
+    }
+    51% {
+        border-left: none;
+    }
+    100% {
+        border-left: none;
+    }
 }
