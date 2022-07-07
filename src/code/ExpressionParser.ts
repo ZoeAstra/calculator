@@ -1,100 +1,75 @@
+type Dictionary<T> = { [index: string]: T }
+type Associativity =
+| 'left'
+| 'right'
 
-// const tokenize = (tokens:string[]) => {
-//     let tokenized:Token[] = []
-//     for (let token of tokens) {
-//         //Simple check to see if it's a number. If so, it is a LiteralToken.
-//         if (!isNaN(Number(token))) {
-//             tokenized.push(new LiteralToken(Number(token)))
-//         } else {
-//             //NaN so check everything else...
-//             switch (token) {
-//                 case "":
-                    
-//                     break;
-            
-//                 default:
-//                     break;
-//             }
-//         }
-//     }
-// }
-
-export function parse(tokens:string[]): {result:number, error:string} {
-    const parser = new Parser()
-    let result = parser.parse(tokens, 0)
-    let error =  ""
-    return {result, error}
+export interface BinaryOperator {
+    associativity:Associativity,
+    evaluate:(leftOperand:number,rightOperand:number) => number
 }
 
-// export interface Node {
-//     name(): string
-//     parse(): Node
-//     evaluate(): number
-// }
+export interface PrefixOperator {
+    evaluate:(operand:number) => number
+}
 
-// export class LiteralNode implements Node {
-//     constructor(private value:number) { }
-//     name(): string {
-//         return 'number'
-//     }
-//     evaluate(): number {
-//         return this.value
-//     }
-// }
-
-// export class OperatorNode implements Node {
-//     constructor(private operator:string, 
-//                 private leftNode:Node, 
-//                 private rightNode:Node,
-//                 private associativity: "left" | "right" ) { }
-//     name(): string {
-//         return this.operator
-//     }
-//     parse(parser:Parser, ): Node {
-        
-//     }
-//     evaluate(): number {
-//         // if (typeof this.leftNode === "Node" )
-//         return 0
-//     }
-// }
-type Dictionary = { [index: string]: any }
-type FunctionDictionary = { [index: string]: Function }
-
-export class Parser {
+export abstract class Parser {
     constructor() {
+        this.bindingPowers = {}
     }
-    private lbp:Dictionary = {
-        "+": 10,
-        "-": 10,
-        "*": 20,
-        "/": 20
+    public bindingGroups:string[][] = [[]]
+    protected bindingPowers:Dictionary<number>
+    protected binaryOperators:Dictionary<BinaryOperator> = {}
+    protected prefixOperators:Dictionary<PrefixOperator> = {}
+    protected calculateBindingPowers() {
+        for (let index in this.bindingGroups) {
+            for (let operator of this.bindingGroups[index]) {
+                this.bindingPowers[operator] = 10 * Number(index) + 9;
+            }
+        }
     }
-    private evaluate:Dictionary = {
-        "+": (left:number,right:number) => { return left + right },
-        "-": (left:number,right:number) => { return left - right },
-        "*": (left:number,right:number) => { return left * right },
-        "/": (left:number,right:number) => { return left / right }
-    }
-    isNumber(token:string): boolean {
+    protected isNumber(token:string): boolean {
         return !isNaN(Number(token))
     }
-    parse(tokens:string[], bp:number): number {
-        let token = tokens.splice(0,1)
-        //replace later with number checking logic, etc.
-        let result = Number(token)
-        while (true) {
-            let lookahead = tokens[0]
-            if (!lookahead) {
-                break
+    // protected bindingPower(token:string): number {
+    //     return 
+    // }
+    /**
+     * Adds a prefix operator to the parser. Note: Operators' binding powers must still be added via the bp property
+     * @param {string} operator The corresponding string/token corresponding to the PrefixOperator that 
+     *                          will be added to the parser's dictionary
+     * @param {PrefixOperator} prefix The PrefixOperator that will be added to the parser's dictionary
+     */
+     public addPrefixOperator(operator:string,prefix:PrefixOperator) {
+        this.prefixOperators[operator] = prefix
+    }
+    /**
+     * Adds a binary operator to the parser. Note: Operators' binding powers must still be added via the bp property
+     * @param {string} operator The corresponding string/token corresponding to the BinaryOperator that 
+     *                          will be added to the parser's dictionary
+     * @param {BinaryOperator} binary The BinaryOperator that will be added to the parser's dictionary
+     */
+    public addBinaryOperator(operator:string,binary:BinaryOperator) {
+        this.binaryOperators[operator] = binary
+    }
+    parse(tokens:string[], bp:number = 0): number {
+        let token = tokens.splice(0,1)[0]
+        let left:number
+        if (!this.isNumber(token)) {
+
+            let prefix = this.prefixOperators[token]
+            if (!prefix){
+                //error handling, eventually
             }
-            if (bp >= this.lbp[lookahead]) {
-                break
-            }
-            tokens.splice(0,1)
-            let rhs = this.parse(tokens, this.lbp[lookahead])
-            result = this.evaluate[lookahead](result,rhs)
+            let right = this.parse(tokens,this.bindingPowers[token])
+            left = prefix.evaluate(right)
+        } else {
+            left = Number(token)
         }
-        return result
+        while (bp < this.bindingPowers[tokens[0]]) {
+            token = tokens.splice(0,1)[0]
+            let binary = this.binaryOperators[token]
+            left = binary.evaluate(left, this.parse(tokens, this.bindingPowers[token] - (binary.associativity === "left" ? 0 : 1) ) )
+        }
+        return left
     }
 }

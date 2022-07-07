@@ -3,7 +3,32 @@ import Display from '../Display/Display';
 import './App.css';
 import Button from '../Button/Button'
 import DisplayAdapter from '../../code/DisplayAdapter';
-import { parse } from '../../code/ExpressionParser';
+import { Parser } from '../../code/ExpressionParser';
+
+class CalcParser extends Parser {
+  constructor() {
+    super()
+    this.bindingGroups = [["+","-"],["*","/"]]
+    this.calculateBindingPowers()
+    this.addBinaryOperator("+", {
+      associativity: "left",
+      evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand + rightOperand }
+    })
+    this.addBinaryOperator("-", {
+      associativity: "left",
+      evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand - rightOperand }
+    })
+    this.addBinaryOperator("*", {
+      associativity: "left",
+      evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand * rightOperand }
+    })
+    this.addBinaryOperator("/", {
+      associativity: "left",
+      evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand / rightOperand }
+    })
+  }
+}
+
 
 function App(): ReactElement {
   const [displayLeftSide, setDisplayLeftSide] = useState("")
@@ -15,7 +40,8 @@ function App(): ReactElement {
     switch (name) {
       case "=":
         let tokens = adapter.getTokens()
-        let {result, error} = parse(tokens)
+        let parser = new CalcParser()
+        let result = parser.parse(tokens,0)
         newAdapter.clear()
         newAdapter.addToken(String(result))
         setDisplayLeftSide(newAdapter.getLeftSide())
