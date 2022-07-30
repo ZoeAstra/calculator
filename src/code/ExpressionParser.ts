@@ -1,3 +1,6 @@
+import { Token } from './Token';
+import {TokenList} from './TokenList';
+
 type Dictionary<T> = { [index: string]: T }
 type Associativity =
 | 'left'
@@ -9,7 +12,14 @@ export interface BinaryOperator {
 }
 
 export interface PrefixOperator {
+    parseFurther:boolean,
     evaluate:(operand:number) => number
+}
+
+export interface ParseResponse {
+    result: number,
+    error: string,
+    errorPosition: number
 }
 
 export abstract class Parser {
@@ -20,6 +30,14 @@ export abstract class Parser {
     protected bindingPowers:Dictionary<number>
     protected binaryOperators:Dictionary<BinaryOperator> = {}
     protected prefixOperators:Dictionary<PrefixOperator> = {}
+
+    bindingPower(token:Token) : number {
+        if (token && this.bindingPowers[token.name] ) {
+            return this.bindingPowers[token.name]
+        }
+        return 0
+    }
+
     protected calculateBindingPowers() {
         for (let index in this.bindingGroups) {
             for (let operator of this.bindingGroups[index]) {
@@ -39,7 +57,7 @@ export abstract class Parser {
      *                          will be added to the parser's dictionary
      * @param {PrefixOperator} prefix The PrefixOperator that will be added to the parser's dictionary
      */
-     public addPrefixOperator(operator:string,prefix:PrefixOperator) {
+     public addPrefixOperator(operator:string, prefix:PrefixOperator) {
         this.prefixOperators[operator] = prefix
     }
     /**
@@ -48,27 +66,28 @@ export abstract class Parser {
      *                          will be added to the parser's dictionary
      * @param {BinaryOperator} binary The BinaryOperator that will be added to the parser's dictionary
      */
-    public addBinaryOperator(operator:string,binary:BinaryOperator) {
+    public addBinaryOperator(operator:string, binary:BinaryOperator) {
         this.binaryOperators[operator] = binary
     }
-    parse(tokens:string[], bp:number = 0): number {
-        let token = tokens.splice(0,1)[0]
-        let left:number
-        if (!this.isNumber(token)) {
 
-            let prefix = this.prefixOperators[token]
-            if (!prefix){
-                //error handling, eventually
-            }
-            let right = this.parse(tokens,this.bindingPowers[token])
+    parse(tokens:TokenList, bp:number = 0): number {
+        let token = tokens.consume()
+        let left:number
+        let prefix = this.prefixOperators[token.name]
+        if (!prefix){
+            //error handling, eventually
+        }
+        if (prefix.parseFurther) {
+            let right = this.parse(tokens,this.bindingPowers[token.name])
             left = prefix.evaluate(right)
         } else {
-            left = Number(token)
+            left = prefix.evaluate(token.value)
         }
-        while (bp < this.bindingPowers[tokens[0]]) {
-            token = tokens.splice(0,1)[0]
-            let binary = this.binaryOperators[token]
-            left = binary.evaluate(left, this.parse(tokens, this.bindingPowers[token] - (binary.associativity === "left" ? 0 : 1) ) )
+        
+        while (bp < this.bindingPower(tokens.peek())) {
+            token = tokens.consume()
+            let binary = this.binaryOperators[token.name]
+            left = binary.evaluate(left, this.parse(tokens, this.bindingPowers[token.name] - (binary.associativity === "left" ? 0 : 1) ) )
         }
         return left
     }

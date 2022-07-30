@@ -2,14 +2,23 @@ import React, { ReactElement, useState } from 'react';
 import Display from '../Display/Display';
 import './App.css';
 import Button from '../Button/Button'
-import DisplayAdapter from '../../code/DisplayAdapter';
+// import DisplayAdapter from '../../code/DisplayAdapter';
+import {TokenList} from '../../code/TokenList';
 import { Parser } from '../../code/ExpressionParser';
 
 class CalcParser extends Parser {
   constructor() {
     super()
-    this.bindingGroups = [["+","-"],["*","/"]]
+    this.bindingGroups = [["Number"],["+","-"],["*","/"]]
     this.calculateBindingPowers()
+    this.addPrefixOperator("Number", {
+      parseFurther: false,
+      evaluate: (operand:number) => { return operand }
+    })
+    this.addPrefixOperator("-", {
+      parseFurther: true,
+      evaluate: (operand:number) => { return -operand }
+    })
     this.addBinaryOperator("+", {
       associativity: "left",
       evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand + rightOperand }
@@ -29,38 +38,49 @@ class CalcParser extends Parser {
   }
 }
 
-
 function App(): ReactElement {
   const [displayLeftSide, setDisplayLeftSide] = useState("")
   const [displayRightSide, setDisplayRightSide] = useState("")
-  const [adapter, setAdapter] = useState(new DisplayAdapter())
+  const [tokenList, setTokenList] = useState(new TokenList())
 
   const processButtonClick = (name: string) => {
-    let newAdapter = adapter
-    switch (name) {
-      case "=":
-        let tokens = adapter.getTokens()
-        let parser = new CalcParser()
-        let result = parser.parse(tokens,0)
-        newAdapter.clear()
-        newAdapter.addToken(String(result))
-        setDisplayLeftSide(newAdapter.getLeftSide())
-        setDisplayRightSide(newAdapter.getRightSide())
-        setAdapter(newAdapter)
-        break
-      case "CLR":
-        newAdapter.clear()
-        setDisplayLeftSide(newAdapter.getLeftSide())
-        setDisplayRightSide(newAdapter.getRightSide())
-        setAdapter(newAdapter)
-        break
-        
-      default:
-        newAdapter.addToken(name)
-        setDisplayLeftSide(newAdapter.getLeftSide())
-        setDisplayRightSide(newAdapter.getRightSide())
-        setAdapter(newAdapter)
-        break
+    let newTokenList = tokenList
+
+    if (!isNaN(Number(name))) {
+      newTokenList.addToken({name: "Number", value: Number(name)})
+      setDisplayLeftSide(newTokenList.getLeftSide())
+      setDisplayRightSide(newTokenList.getRightSide())
+      setTokenList(newTokenList)
+
+    } else {
+      switch (name) {
+
+        case "=":
+          let parser = new CalcParser()
+          tokenList.setPosition(0)
+          let result = parser.parse(tokenList,0)
+          newTokenList.clear()
+          newTokenList.addToken({name: "Number", value: result})
+          setDisplayLeftSide(newTokenList.getLeftSide())
+          setDisplayRightSide(newTokenList.getRightSide())
+          setTokenList(newTokenList)
+          break
+
+        case "CLR":
+          newTokenList.clear()
+          setDisplayLeftSide(newTokenList.getLeftSide())
+          setDisplayRightSide(newTokenList.getRightSide())
+          setTokenList(newTokenList)
+          break
+          
+        default:
+          newTokenList.addToken({name: name, value: name})
+          setDisplayLeftSide(newTokenList.getLeftSide())
+          setDisplayRightSide(newTokenList.getRightSide())
+          setTokenList(newTokenList)
+          break
+      }
+      
     }
     return undefined
   }
