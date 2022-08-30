@@ -25,7 +25,7 @@ export default function Button(props: Props): ReactElement {
 
     return (
         <div className={widthClass + ' center'}>
-            <button onClick={handleClick} className={props.colorClass}>
+            <button role={'button'} name={props.name} onClick={handleClick} className={props.colorClass}>
                 {buttonInterior}
             </button>
         </div>

@@ -3,45 +3,85 @@ import Display from '../Display/Display';
 import './App.css';
 import Button from '../Button/Button'
 // import DisplayAdapter from '../../code/DisplayAdapter';
-import {TokenList} from '../../code/TokenList';
-import { Parser } from '../../code/ExpressionParser';
+import { TokenList } from '../../code/TokenList';
+import { Token } from '../../code/Token';
+import { Parser, Operator, ParserError } from '../../code/PrattParser';
 
-class CalcParser extends Parser {
-  constructor() {
-    super()
-    this.bindingGroups = [["Number"],["+","-"],["*","/"]]
+class CalcParser extends Parser<number> {
+  constructor(tokens: TokenList) {
+    super(tokens)
+
+    this.bindingGroups = [[")"],["Number","("],["+","-"],["*","/"],["^"]]
     this.calculateBindingPowers()
-    this.addPrefixOperator("Number", {
-      parseFurther: false,
-      evaluate: (operand:number) => { return operand }
-    })
-    this.addPrefixOperator("-", {
-      parseFurther: true,
-      evaluate: (operand:number) => { return -operand }
-    })
-    this.addBinaryOperator("+", {
-      associativity: "left",
-      evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand + rightOperand }
-    })
-    this.addBinaryOperator("-", {
-      associativity: "left",
-      evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand - rightOperand }
-    })
-    this.addBinaryOperator("*", {
-      associativity: "left",
-      evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand * rightOperand }
-    })
-    this.addBinaryOperator("/", {
-      associativity: "left",
-      evaluate: (leftOperand:number, rightOperand:number) => { return leftOperand / rightOperand }
-    })
+
+    this.addPrefixOperator("Number", new Operator((parser:Parser<number>, operand:number) => { 
+      return parser.tokens.getCurrentToken().value 
+    }
+    ))
+    this.addPrefixOperator("-", new Operator((parser:Parser<number>, operand:number) => { 
+      let right = parser.parse(parser.bindingPower({name:"-", value:"-"}))
+      return -right 
+    }
+    ))
+    this.addPrefixOperator("(", new Operator((parser:Parser<number>, operand:number) => { 
+      let right = parser.parse(parser.bindingPower({name:"(", value:"("}))
+      if (parser.tokens.peek().name !== ")") {
+        throw new ParserError("Error: Expected token ')'", parser.tokens.getPosition()+1)
+      }
+      parser.tokens.consume()
+      return right
+    }
+    ))
+    this.addBinaryOperator("+", new Operator(
+      function evaluate(parser:Parser<number>, leftOperand:number): number { 
+        let rightOperand = parser.parse(parser.bindingPower({name:"+", value:"+"}))
+        return leftOperand + rightOperand 
+      }
+    ))
+    this.addBinaryOperator("-", new Operator(
+      function evaluate(parser:Parser<number>, leftOperand:number): number { 
+        let rightOperand = parser.parse(parser.bindingPower({name:"-", value:"-"}))
+        return leftOperand - rightOperand 
+      }
+    ))
+    this.addBinaryOperator("*", new Operator(
+      function evaluate(parser:Parser<number>, leftOperand:number): number { 
+        let rightOperand = parser.parse(parser.bindingPower({name:"*", value:"*"}))
+        return leftOperand * rightOperand 
+      }
+    ))
+    this.addBinaryOperator("/", new Operator(
+      function evaluate(parser:Parser<number>, leftOperand:number): number { 
+        let rightOperand = parser.parse(parser.bindingPower({name:"/", value:"/"}))
+        return leftOperand / rightOperand 
+      }
+    ))
+    
   }
 }
+
 
 function App(): ReactElement {
   const [displayLeftSide, setDisplayLeftSide] = useState("")
   const [displayRightSide, setDisplayRightSide] = useState("")
   const [tokenList, setTokenList] = useState(new TokenList())
+
+  const collapseNumbers = (tokens:Token[]): Token[] => {
+    for (let index in tokens) {
+        if (tokens[index].name === "Number" || tokens[index].name === '.') {
+            while (tokens[Number(index)+1] && 
+                    (tokens[Number(index)+1].name === "Number" || 
+                    tokens[Number(index)+1].name === '.')) {
+                tokens[index].value = tokens[index].value.toString() + tokens[Number(index)+1].value.toString()
+                tokens.splice(Number(index)+1,1)
+            }
+        }
+    }
+    return tokens.map((val, index, arr) => {
+        if (val.name === "Number") val.value = Number(val.value)
+        return val
+    })
+  }
 
   const processButtonClick = (name: string) => {
     let newTokenList = tokenList
@@ -56,14 +96,27 @@ function App(): ReactElement {
       switch (name) {
 
         case "=":
-          let parser = new CalcParser()
+          let prev = tokenList.getPosition()
           tokenList.setPosition(0)
-          let result = parser.parse(tokenList,0)
-          newTokenList.clear()
-          newTokenList.addToken({name: "Number", value: result})
-          setDisplayLeftSide(newTokenList.getLeftSide())
-          setDisplayRightSide(newTokenList.getRightSide())
-          setTokenList(newTokenList)
+          let parser = new CalcParser(tokenList)
+          try {
+            newTokenList.setTokens(collapseNumbers(newTokenList.getTokens()))
+            let result = parser.parse(0)
+            newTokenList.clear()
+            newTokenList.addToken({name: "Number", value: result})
+            setDisplayLeftSide(newTokenList.getLeftSide())
+            setDisplayRightSide(newTokenList.getRightSide())
+            setTokenList(newTokenList)
+          } catch (error) {
+            tokenList.setPosition(prev)
+            console.error(error)
+            if (error instanceof ParserError) {
+              alert(error.message + ` at position ${error.position.toString()}`)
+            } else if (error instanceof Error) {
+              alert(error.message)
+            }
+            //eventual more error handling... probably a positioned non-modal popup/tooltip.
+          }
           break
 
         case "CLR":
@@ -86,7 +139,7 @@ function App(): ReactElement {
   }
 
   return (
-    <div className='app'>
+    <div role='main' className='app'>
       <Display leftSide={displayLeftSide} rightSide={displayRightSide} />
       <div className='button-panel'>
         <div className='button-row'>
